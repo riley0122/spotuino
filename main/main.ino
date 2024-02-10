@@ -8,6 +8,8 @@ LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
 int status = WL_IDLE_STATUS;
 
+WiFiServer server(80);
+
 void setup() {
   Serial.begin(9600);
   lcd.begin(16, 2);
@@ -73,10 +75,53 @@ void setup() {
     }
   }
 
+  lcd.setCursor(0,0);
+  lcd.print("ip:");
+  IPAddress ip = WiFi.localIP();
+  lcd.print(ip);
   lcd.setCursor(0,1);
-  lcd.print("Connected!");
+  lcd.print("Connected!      ");
+  server.begin();
 }
 
 void loop() {
+  // Accept connections on web server
+  WiFiClient client = server.available();
+  if (client)
+  {
+    boolean blank = true;
+    while (client.connected())
+    {
+      if (client.available())
+      {
+        char c = client.read();
+        Serial.write(c);
+        if (c == '\n' && blank)
+        {
+          client.println("HTTP/1.1 200 OK");
+          client.println("Content-Type: text/html");
+          client.println("Connection: close");
+          client.println();
+          client.println("<!docktype html>");
+          client.println("<html>");
+          client.println("<head><title>Spotuino</title></head>");
+          client.println("<body><h1>Hello, World!</h1></body>");
+          client.println("</html>");
+          break;
+        }
 
+        if (c == '\n')
+        {
+          blank = true;
+        } else if (c != '\r')
+        {
+          blank = false;
+        }
+      }
+    }
+    
+    delay(1);
+
+    client.stop();
+  }
 }
